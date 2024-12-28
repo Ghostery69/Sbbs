@@ -4,10 +4,10 @@ from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 # Clé API Telegram
-TELEGRAM_API_KEY = 'TON_TOKEN'
+TELEGRAM_API_KEY = '7044574411:AAFxdsxuq3kfwneKewngfbzqVx3OrhCtLcM'
 
 # ID Telegram de ton bot
-CHAT_ID = 'TON_CHAT_ID'
+CHAT_ID = '7104713412'
 
 # URL de l'API externe comme dans le script Java
 API_URL = "https://kaiz-apis.gleeze.com/api/gpt-4o"
