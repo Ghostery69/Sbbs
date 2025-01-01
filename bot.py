@@ -1,85 +1,65 @@
-import requests
-import logging
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+import random, datetime
 
-# Clé API Telegram
-TELEGRAM_API_KEY = '7044574411:AAFxdsxuq3kfwneKewngfbzqVx3OrhCtLcM'
+# Remplacez par votre token API
+API_TOKEN = "8191740195:AAElItof0jfiEFJu2d5zX-CZLvR5tUb9qaY"
 
-# ID Telegram de ton bot
-CHAT_ID = '7104713412'
+# Limite de prédictions (par défaut : 5)
+MAX_PREDICTIONS = 5
+user_predictions = {}
 
-# URL de l'API externe comme dans le script Java
-API_URL = "https://kaiz-apis.gleeze.com/api/gpt-4o"
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    user_predictions[chat_id] = 0
+    keyboard = [[InlineKeyboardButton("Prédire", callback_data='predict')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(
+        "Bienvenue ! Cliquez sur 'Prédire' pour commencer.",
+        reply_markup=reply_markup
+    )
 
-# Configurer le logging pour suivre les erreurs
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
+async def predict(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    chat_id = query.message.chat_id
 
-# Fonction pour démarrer le bot
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("Salut ! Pose-moi une question et je vais y répondre avec GPT.")
+    # Vérifie si l'utilisateur a dépassé sa limite
+    if chat_id in user_predictions and user_predictions[chat_id] >= MAX_PREDICTIONS:
+        await query.edit_message_text(
+            text="❌ Vous avez atteint la limite de prédictions. "
+                 "Contactez +22656967818 pour obtenir un accès illimité avec le code : 'Tall@2008'."
+        )
+        return
 
-# Fonction pour traiter les messages et obtenir des réponses de l'API GPT
-def handle_message(update: Update, context: CallbackContext):
-    user_message = update.message.text  # Message de l'utilisateur
+    # Générer des prédictions
+    now = datetime.datetime.now()
+    cote_a = round(random.uniform(4.00, 25.00), 2)
+    cote_b = round(random.uniform(4.00, 25.00), 2)
+    assurance = round(random.uniform(3.00, 6.00), 2)
+    time1 = (now + datetime.timedelta(minutes=random.randint(2, 5))).strftime("%H:%M")
+    time2 = (now + datetime.timedelta(minutes=random.randint(3, 6))).strftime("%H:%M")
 
-    if user_message.startswith('/'):
-        return  # Ignorer les commandes
+    prediction_text = (
+        f"🧨 MARC LUCKYJET V2 🧨\n\n"
+        f"*HEURE : {time1} — {time2}\n"
+        f"*COTE : x{min(cote_a, cote_b)} — x{max(cote_a, cote_b)}\n"
+        f"*ASSURANCE : x{assurance}\n\n"
+        f"*Ces cotes viendront dans l'intervalle donné !*"
+    )
 
-    try:
-        # Préparer la requête pour l'API GPT
-        params = {
-            'q': user_message,
-            'uid': update.message.from_user.id  # ID de l'utilisateur pour personnaliser l'appel
-        }
+    # Envoyer la prédiction
+    user_predictions[chat_id] += 1
+    keyboard = [[InlineKeyboardButton("Nouvelle Prédiction", callback_data='predict')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text=prediction_text, reply_markup=reply_markup)
 
-        # Effectuer la requête à l'API
-        response = requests.get(API_URL, params=params)
-
-        # Vérifier si la réponse est correcte
-        if response.status_code == 200:
-            data = response.json()  # Extraire les données JSON de la réponse
-            bot_reply = data.get('response', 'Désolé, je n'ai pas pu générer une réponse.')
-
-            # Styliser et ajouter des emojis à la réponse
-            styled_reply = bot_reply + " 😎🔥"  # Tu peux styliser comme tu veux ici
-
-            # Envoi de la réponse générée par l'API sur Telegram
-            update.message.reply_text(styled_reply)
-        else:
-            update.message.reply_text("Désolé, une erreur est survenue lors de la génération de la réponse. 😞")
-            logger.error(f"Erreur de l'API GPT : {response.status_code}")
-    
-    except Exception as e:
-        update.message.reply_text("Désolé, une erreur est survenue. Veuillez réessayer plus tard.")
-        logger.error(f"Erreur : {e}")
-
-# Fonction pour gérer les erreurs
-def error(update: Update, context: CallbackContext):
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
-
-# Fonction principale pour démarrer le bot
 def main():
-    # Crée une instance de l'Updater avec le token de ton bot Telegram
-    updater = Updater(TELEGRAM_API_KEY, use_context=True)
+    application = ApplicationBuilder().token(API_TOKEN).build()
 
-    # Obtiens le dispatcher pour enregistrer les gestionnaires de commandes
-    dispatcher = updater.dispatcher
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(predict, pattern="predict"))
 
-    # Ajoute un gestionnaire pour la commande /start
-    dispatcher.add_handler(CommandHandler("start", start))
+    application.run_polling()
 
-    # Ajoute un gestionnaire pour les messages texte
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-
-    # Ajoute un gestionnaire pour les erreurs
-    dispatcher.add_error_handler(error)
-
-    # Démarre le bot
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
